@@ -2,14 +2,17 @@ import {parseBuffer,KNOWN_OFFSETS} from './parser.js';
 import {exportEventExcel} from './event-excel.js';
 
 const SETTINGS_API='https://jblrnncqnrqtzwayxtnw.supabase.co/functions/v1/soyal-settings';
+const PAGE_SIZE=1000;
 const $=s=>document.querySelector(s);
 const fileInput=$('#fileInput'),pickBtn=$('#pickBtn'),dropZone=$('#dropZone'),body=$('#resultBody');
-const toolbar=$('#toolbar'),resultSection=$('#resultSection');
+const toolbar=$('#toolbar'),resultSection=$('#resultSection'),tableWrap=$('#tableWrap');
 const searchBox=$('#searchBox'),doorFilter=$('#doorFilter'),addressFilter=$('#addressFilter'),codeFilter=$('#codeFilter');
+const paginationInfo=$('#paginationInfo'),pageStat=$('#pageStat');
+const firstPageBtn=$('#firstPageBtn'),prevPageBtn=$('#prevPageBtn'),nextPageBtn=$('#nextPageBtn'),lastPageBtn=$('#lastPageBtn');
 const dialog=$('#detailDialog'),hexGrid=$('#hexGrid'),detailSummary=$('#detailSummary');
 const doorSettingsDialog=$('#doorSettingsDialog'),userSettingsDialog=$('#userSettingsDialog');
 let allRecords=[],allErrors=[],filesLoaded=0,loadSequence=0,duplicateCount=0;
-let sortKey='eventTime',sortDir='asc';
+let sortKey='eventTime',sortDir='asc',currentPage=1;
 let doorSettings=[],userSettings=[],doorMap=new Map(),userMap=new Map();
 const recordKeys=new Set();
 
@@ -18,10 +21,17 @@ fileInput.addEventListener('change',e=>loadFiles([...e.target.files]));
 ['dragenter','dragover'].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.add('drag')}));
 ['dragleave','drop'].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.remove('drag')}));
 dropZone.addEventListener('drop',e=>loadFiles([...e.dataTransfer.files]));
-searchBox.addEventListener('input',render);doorFilter.addEventListener('change',render);addressFilter.addEventListener('change',render);codeFilter.addEventListener('change',render);
+searchBox.addEventListener('input',resetPageAndRender);
+doorFilter.addEventListener('change',resetPageAndRender);
+addressFilter.addEventListener('change',resetPageAndRender);
+codeFilter.addEventListener('change',resetPageAndRender);
 $('#closeDialog').addEventListener('click',()=>dialog.close());
 $('#clearBtn').addEventListener('click',clearImportedData);
 $('#exportBtn').addEventListener('click',exportExcel);
+firstPageBtn.addEventListener('click',()=>goToPage(1));
+prevPageBtn.addEventListener('click',()=>goToPage(currentPage-1));
+nextPageBtn.addEventListener('click',()=>goToPage(currentPage+1));
+lastPageBtn.addEventListener('click',()=>goToPage(Number(lastPageBtn.dataset.lastPage)||1));
 document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>changeSort(th.dataset.sort)));
 
 $('#doorSettingsBtn').addEventListener('click',async()=>{await loadSettings();doorSettingsDialog.showModal();});
@@ -36,7 +46,7 @@ async function settingsRequest(type,method='GET',payload={}){
   const url=method==='GET'?`${SETTINGS_API}?type=${encodeURIComponent(type)}`:SETTINGS_API;
   const options={method,headers:{'Content-Type':'application/json'}};if(method!=='GET')options.body=JSON.stringify({type,...payload});
   const response=await fetch(url,options);let result={};try{result=await response.json();}catch{}
-  if(!response.ok)throw new Error(result.error||`設定 API 錯誤 (${response.status})`);return result;
+  if(!response.ok){const message=typeof result.error==='string'?result.error:(result.error?.message||`設定 API 錯誤 (${response.status})`);throw new Error(message);}return result;
 }
 
 async function loadSettings(){
@@ -56,9 +66,12 @@ async function loadFiles(files){
   const msgs=files.filter(f=>f.name.toLowerCase().endsWith('.msg'));if(!msgs.length)return;
   for(const file of msgs){
     const parsed=parseBuffer(await file.arrayBuffer(),file.name);allErrors.push(...parsed.errors);filesLoaded++;
-    for(const r of parsed.records){const key=rawRecordKey(r);if(recordKeys.has(key)){duplicateCount++;continue;}recordKeys.add(key);r.loadOrder=++loadSequence;allRecords.push(r);}
+    for(const r of parsed.records){
+      const key=rawRecordKey(r);if(recordKeys.has(key)){duplicateCount++;continue;}
+      recordKeys.add(key);r.loadOrder=++loadSequence;r.recordIndex=allRecords.length;allRecords.push(r);
+    }
   }
-  refreshFilters();render();toolbar.hidden=false;resultSection.hidden=false;
+  currentPage=1;refreshFilters();render();toolbar.hidden=false;resultSection.hidden=false;
   $('#fileStat').textContent=`檔案 ${filesLoaded} 個`;$('#recordStat').textContent=`紀錄 ${allRecords.length} 筆`;$('#duplicateStat').textContent=`重複略過 ${duplicateCount} 筆`;$('#errorStat').textContent=`格式警告 ${allErrors.length} 個`;fileInput.value='';
 }
 
@@ -66,11 +79,11 @@ function clearImportedData(){
   if(!allRecords.length&&!filesLoaded)return;
   if(!confirm('確定要清空目前已匯入的所有資料嗎？'))return;
   allRecords=[];allErrors=[];filesLoaded=0;loadSequence=0;duplicateCount=0;recordKeys.clear();
-  sortKey='eventTime';sortDir='asc';searchBox.value='';
+  sortKey='eventTime';sortDir='asc';currentPage=1;searchBox.value='';
   doorFilter.innerHTML='<option value="">全部門號</option>';
   addressFilter.innerHTML='<option value="">全部使用者</option>';
   codeFilter.innerHTML='<option value="">全部事件</option>';
-  body.innerHTML='';fileInput.value='';
+  body.innerHTML='';fileInput.value='';paginationInfo.textContent='';pageStat.textContent='';
   $('#fileStat').textContent='';$('#recordStat').textContent='';$('#duplicateStat').textContent='';$('#errorStat').textContent='';
   toolbar.hidden=true;resultSection.hidden=true;
   if(dialog.open)dialog.close();
@@ -92,7 +105,8 @@ function refreshFilters(){
   codeFilter.innerHTML='<option value="">全部事件</option>'+codes.map(([value,label])=>`<option value="${esc(value)}">${esc(label)}</option>`).join('');if(codes.some(([value])=>value===selectedCode))codeFilter.value=selectedCode;
 }
 
-function changeSort(key){if(sortKey===key)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=key;sortDir='asc';}render();}
+function resetPageAndRender(){currentPage=1;render();}
+function changeSort(key){if(sortKey===key)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=key;sortDir='asc';}currentPage=1;render();}
 function compareValues(a,b,key){
   if(key==='doorName')return getDoorName(a).localeCompare(getDoorName(b),'zh-Hant',{numeric:true,sensitivity:'base'});
   if(key==='userName')return getUserName(a).localeCompare(getUserName(b),'zh-Hant',{numeric:true,sensitivity:'base'});
@@ -109,10 +123,29 @@ function getFiltered(){
   return filtered.sort((a,b)=>{const primary=compareValues(a,b,sortKey);if(primary!==0)return sortDir==='asc'?primary:-primary;return a.loadOrder-b.loadOrder;});
 }
 
+function goToPage(page){
+  const totalPages=Number(lastPageBtn.dataset.lastPage)||1;
+  const next=Math.min(Math.max(1,page),totalPages);if(next===currentPage)return;
+  currentPage=next;render();tableWrap.scrollTop=0;
+}
+
+function updatePagination(totalRecords,totalPages,startIndex,endIndex){
+  pageStat.textContent=`第 ${currentPage} / ${totalPages} 頁`;
+  paginationInfo.textContent=totalRecords?`目前顯示 ${startIndex+1}–${endIndex} 筆，共 ${totalRecords} 筆；每頁 ${PAGE_SIZE} 筆`:'沒有符合條件的資料';
+  firstPageBtn.disabled=currentPage<=1;prevPageBtn.disabled=currentPage<=1;
+  nextPageBtn.disabled=currentPage>=totalPages;lastPageBtn.disabled=currentPage>=totalPages;
+  lastPageBtn.dataset.lastPage=String(totalPages);
+}
+
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
 function render(){
-  updateSortHeaders();body.innerHTML=getFiltered().map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.eventTime)}</td><td>${r.door}</td><td>${esc(getDoorName(r))}</td><td>${formatUserCode(r.userAddress)}</td><td>${esc(getUserName(r))}</td><td><code>${r.functionLabel}</code></td><td>${esc(r.functionName)}</td><td>${esc(r.fileName)}</td><td><button data-key="${allRecords.indexOf(r)}">HEX</button></td></tr>`).join('');
+  updateSortHeaders();
+  const records=getFiltered();const totalPages=Math.max(1,Math.ceil(records.length/PAGE_SIZE));
+  if(currentPage>totalPages)currentPage=totalPages;
+  const start=(currentPage-1)*PAGE_SIZE;const end=Math.min(start+PAGE_SIZE,records.length);const pageRecords=records.slice(start,end);
+  body.innerHTML=pageRecords.map((r,i)=>`<tr><td>${start+i+1}</td><td>${esc(r.eventTime)}</td><td>${r.door}</td><td>${esc(getDoorName(r))}</td><td>${formatUserCode(r.userAddress)}</td><td>${esc(getUserName(r))}</td><td><code>${r.functionLabel}</code></td><td>${esc(r.functionName)}</td><td>${esc(r.fileName)}</td><td><button data-key="${r.recordIndex}">HEX</button></td></tr>`).join('');
   body.querySelectorAll('button[data-key]').forEach(btn=>btn.addEventListener('click',()=>showDetail(allRecords[Number(btn.dataset.key)])));
+  updatePagination(records.length,totalPages,start,end);
 }
 
 function showDetail(r){
