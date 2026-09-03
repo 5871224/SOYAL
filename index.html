@@ -30,7 +30,7 @@
         <span id="errorStat"></span>
       </div>
       <div class="filters">
-        <input id="searchBox" type="search" placeholder="搜尋時間、Node、User Address、事件碼…" />
+        <input id="searchBox" type="search" placeholder="搜尋時間、Node、使用者位址、事件碼或事件名稱…" />
         <select id="nodeFilter"><option value="">全部 Node</option></select>
         <select id="codeFilter"><option value="">全部事件碼</option></select>
         <button id="exportBtn">匯出 CSV</button>
@@ -42,7 +42,7 @@
         <table>
           <thead>
             <tr>
-              <th>#</th><th>事件時間</th><th>Node</th><th>門號</th><th>User Address</th><th>事件碼</th><th>事件</th><th>接收時間</th><th>檔案</th><th></th>
+              <th>#</th><th>事件時間</th><th>Node</th><th>門號</th><th>使用者位址</th><th>事件碼</th><th>事件中文名稱</th><th>接收時間</th><th>檔案</th><th></th>
             </tr>
           </thead>
           <tbody id="resultBody"></tbody>
@@ -53,6 +53,7 @@
     <section class="card" id="emptyState">
       <h2>已知解析欄位</h2>
       <p>事件主封包可解析 Length、Function Code、Source Node、事件時間、Message Source、User Address、Sub Code、Sub Function、Extension Code、User Level、Door、卡號相關欄位與 checksum。100-byte File Base 後段另含 701Server/Client 寫入時間與管理欄位。</p>
+      <p><strong>使用者位址（User Address）</strong>是控制器內的人員索引值；若要顯示姓名、部門等資料，仍需另外載入 701Client / 701Server 的人員資料。<strong>事件碼</strong>則可直接依 SOYAL 官方 Function Code 表轉成中文事件名稱，不需要資料庫。</p>
       <p class="note">未公開或尚未完全確認的 Offset 會保留原始 HEX，不會硬猜欄位名稱。</p>
     </section>
   </main>
