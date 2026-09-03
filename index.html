@@ -32,9 +32,9 @@
       </div>
       <div class="toolbar-controls">
         <div class="filters">
-          <input id="searchBox" type="search" placeholder="搜尋時間、門名稱、使用者名稱、事件碼…" />
-          <select id="nodeFilter"><option value="">全部 Node</option></select>
-          <select id="addressFilter"><option value="">全部使用者位址</option></select>
+          <input id="searchBox" type="search" placeholder="搜尋時間、門號、門名稱、使用者名稱、事件碼…" />
+          <select id="doorFilter"><option value="">全部門號</option></select>
+          <select id="addressFilter"><option value="">全部使用者代碼</option></select>
           <select id="codeFilter"><option value="">全部事件碼</option></select>
         </div>
         <button id="exportBtn" class="export-button">匯出 Excel</button>
@@ -50,7 +50,7 @@
               <th class="sortable" data-sort="eventTime">事件時間 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="door">門號 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="doorName">門名稱 <span class="sort-mark"></span></th>
-              <th class="sortable" data-sort="userAddress">使用者位址 <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="userAddress">使用者代碼 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="userName">使用者名稱 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="functionCode">事件碼 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="functionName">事件名稱 <span class="sort-mark"></span></th>
@@ -66,7 +66,7 @@
     <section class="card" id="emptyState">
       <h2>已知解析欄位</h2>
       <p>事件主封包可解析 Length、Function Code、Source Node、事件時間、Message Source、User Address、Sub Code、Sub Function、Extension Code、User Level、Door、卡號相關欄位與 checksum。100-byte File Base 後段另含 701Server/Client 寫入時間與管理欄位。</p>
-      <p><strong>門號設定</strong>以門號對應門名稱；<strong>使用者設定</strong>以 User Address 對應使用者名稱。兩者皆存於 VCF Supabase，修改後所有裝置共用。</p>
+      <p><strong>門號設定</strong>以門號對應門名稱；<strong>使用者設定</strong>以使用者代碼對應使用者名稱。兩者皆存於 VCF Supabase，修改後所有裝置共用。</p>
       <p class="note">目前設定 API 依你的要求開放所有人修改；未公開或尚未完全確認的 Offset 仍保留原始 HEX。</p>
     </section>
   </main>
@@ -109,7 +109,7 @@
     <div class="dialog-head"><h2>使用者設定</h2><button class="dialog-close" data-close="userSettingsDialog" aria-label="關閉">×</button></div>
     <form id="userForm" class="settings-form">
       <input id="userEditId" type="hidden" />
-      <label>使用者位址<input id="userAddressInput" type="number" min="0" required /></label>
+      <label>使用者代碼<input id="userAddressInput" type="number" min="0" required /></label>
       <label class="grow">使用者名稱<input id="userName" type="text" maxlength="200" placeholder="例如：張均穗" required /></label>
       <div class="form-actions">
         <button class="primary" type="submit">儲存</button>
@@ -127,7 +127,7 @@
     <div class="settings-message" id="userMessage"></div>
     <div class="settings-table-wrap">
       <table class="settings-table">
-        <thead><tr><th>使用者位址</th><th>使用者名稱</th><th>操作</th></tr></thead>
+        <thead><tr><th>使用者代碼</th><th>使用者名稱</th><th>操作</th></tr></thead>
         <tbody id="userSettingsBody"></tbody>
       </table>
     </div>
