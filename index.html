@@ -9,14 +9,10 @@
 <body>
   <main class="wrap">
     <header>
-      <div>
-        <h1>SOYAL MSG Viewer</h1>
-        <p>在瀏覽器本機解析 701Server / 701Client 的每日 <code>.msg</code> 事件檔；檔案不會上傳到伺服器。</p>
-      </div>
+      <h1>SOYAL MSG Viewer</h1>
       <div class="header-actions">
         <button id="doorSettingsBtn">門號設定</button>
         <button id="userSettingsBtn">使用者設定</button>
-        <a class="github" href="https://github.com/5871224/SOYAL" target="_blank" rel="noreferrer">GitHub</a>
       </div>
     </header>
 
@@ -24,21 +20,24 @@
       <input id="fileInput" type="file" accept=".msg,application/octet-stream" multiple hidden />
       <button id="pickBtn" class="primary">選擇 .msg 檔</button>
       <strong>或一次拖曳多個檔案到這裡</strong>
-      <span>可同時解析多個 SOYAL .msg；File Base 每筆固定 100 bytes，結果會合併顯示</span>
+      <span>可同時解析多個 SOYAL .msg；完全相同的 100-byte 紀錄會自動去除重複</span>
     </section>
 
     <section class="card toolbar" id="toolbar" hidden>
       <div class="stats">
         <span id="fileStat"></span>
         <span id="recordStat"></span>
+        <span id="duplicateStat"></span>
         <span id="errorStat"></span>
       </div>
-      <div class="filters">
-        <input id="searchBox" type="search" placeholder="搜尋時間、門名稱、使用者名稱、事件碼…" />
-        <select id="nodeFilter"><option value="">全部 Node</option></select>
-        <select id="addressFilter"><option value="">全部使用者位址</option></select>
-        <select id="codeFilter"><option value="">全部事件碼</option></select>
-        <button id="exportBtn">匯出 CSV</button>
+      <div class="toolbar-controls">
+        <div class="filters">
+          <input id="searchBox" type="search" placeholder="搜尋時間、門名稱、使用者名稱、事件碼…" />
+          <select id="nodeFilter"><option value="">全部 Node</option></select>
+          <select id="addressFilter"><option value="">全部使用者位址</option></select>
+          <select id="codeFilter"><option value="">全部事件碼</option></select>
+        </div>
+        <button id="exportBtn" class="export-button">匯出 Excel</button>
       </div>
     </section>
 
@@ -49,14 +48,12 @@
             <tr>
               <th class="sortable" data-sort="loadOrder"># <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="eventTime">事件時間 <span class="sort-mark"></span></th>
-              <th class="sortable" data-sort="node">Node <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="door">門號 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="doorName">門名稱 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="userAddress">使用者位址 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="userName">使用者名稱 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="functionCode">事件碼 <span class="sort-mark"></span></th>
-              <th class="sortable" data-sort="functionName">事件中文名稱 <span class="sort-mark"></span></th>
-              <th class="sortable" data-sort="recordedTime">接收時間 <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="functionName">事件名稱 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="fileName">檔案 <span class="sort-mark"></span></th>
               <th>詳細</th>
             </tr>
@@ -87,14 +84,18 @@
       <label>Node<input id="doorNode" type="number" min="0" required /></label>
       <label>門號<input id="doorNo" type="number" min="0" required /></label>
       <label class="grow">門名稱<input id="doorName" type="text" maxlength="200" placeholder="例如：大門-3F" required /></label>
-      <button class="primary" type="submit">儲存</button>
-      <button id="doorCancelEdit" type="button" hidden>取消編輯</button>
+      <div class="form-actions">
+        <button class="primary" type="submit">儲存</button>
+        <button id="doorCancelEdit" type="button" hidden>取消編輯</button>
+      </div>
     </form>
     <div class="settings-excel-actions">
       <input id="doorExcelInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
-      <button id="doorExportExcel" type="button">匯出 Excel</button>
-      <button id="doorImportExcel" type="button">匯入 Excel</button>
-      <span class="note">匯出的 <code>.xlsx</code> 可直接修改後再匯入；匯入只新增／更新，不會刪除未列出的既有資料。</span>
+      <div class="settings-excel-buttons">
+        <button id="doorExportExcel" type="button">匯出 Excel</button>
+        <button id="doorImportExcel" type="button">匯入 Excel</button>
+      </div>
+      <span class="note">匯出的 .xlsx 可直接修改後再匯入；匯入只新增／更新，不會刪除未列出的既有資料。</span>
     </div>
     <div class="settings-message" id="doorMessage"></div>
     <div class="settings-table-wrap">
@@ -111,14 +112,18 @@
       <input id="userEditId" type="hidden" />
       <label>使用者位址<input id="userAddressInput" type="number" min="0" required /></label>
       <label class="grow">使用者名稱<input id="userName" type="text" maxlength="200" placeholder="例如：張均穗" required /></label>
-      <button class="primary" type="submit">儲存</button>
-      <button id="userCancelEdit" type="button" hidden>取消編輯</button>
+      <div class="form-actions">
+        <button class="primary" type="submit">儲存</button>
+        <button id="userCancelEdit" type="button" hidden>取消編輯</button>
+      </div>
     </form>
     <div class="settings-excel-actions">
       <input id="userExcelInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
-      <button id="userExportExcel" type="button">匯出 Excel</button>
-      <button id="userImportExcel" type="button">匯入 Excel</button>
-      <span class="note">匯出的 <code>.xlsx</code> 可直接修改後再匯入；匯入只新增／更新，不會刪除未列出的既有資料。</span>
+      <div class="settings-excel-buttons">
+        <button id="userExportExcel" type="button">匯出 Excel</button>
+        <button id="userImportExcel" type="button">匯入 Excel</button>
+      </div>
+      <span class="note">匯出的 .xlsx 可直接修改後再匯入；匯入只新增／更新，不會刪除未列出的既有資料。</span>
     </div>
     <div class="settings-message" id="userMessage"></div>
     <div class="settings-table-wrap">
