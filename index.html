@@ -13,7 +13,11 @@
         <h1>SOYAL MSG Viewer</h1>
         <p>在瀏覽器本機解析 701Server / 701Client 的每日 <code>.msg</code> 事件檔；檔案不會上傳到伺服器。</p>
       </div>
-      <a class="github" href="https://github.com/5871224/SOYAL" target="_blank" rel="noreferrer">GitHub</a>
+      <div class="header-actions">
+        <button id="doorSettingsBtn">門號設定</button>
+        <button id="userSettingsBtn">使用者設定</button>
+        <a class="github" href="https://github.com/5871224/SOYAL" target="_blank" rel="noreferrer">GitHub</a>
+      </div>
     </header>
 
     <section class="card uploader" id="dropZone">
@@ -30,7 +34,7 @@
         <span id="errorStat"></span>
       </div>
       <div class="filters">
-        <input id="searchBox" type="search" placeholder="搜尋時間、Node、使用者位址、事件碼或事件名稱…" />
+        <input id="searchBox" type="search" placeholder="搜尋時間、門名稱、使用者名稱、事件碼…" />
         <select id="nodeFilter"><option value="">全部 Node</option></select>
         <select id="addressFilter"><option value="">全部使用者位址</option></select>
         <select id="codeFilter"><option value="">全部事件碼</option></select>
@@ -47,7 +51,9 @@
               <th class="sortable" data-sort="eventTime">事件時間 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="node">Node <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="door">門號 <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="doorName">門名稱 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="userAddress">使用者位址 <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="userName">使用者名稱 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="functionCode">事件碼 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="functionName">事件中文名稱 <span class="sort-mark"></span></th>
               <th class="sortable" data-sort="recordedTime">接收時間 <span class="sort-mark"></span></th>
@@ -63,8 +69,8 @@
     <section class="card" id="emptyState">
       <h2>已知解析欄位</h2>
       <p>事件主封包可解析 Length、Function Code、Source Node、事件時間、Message Source、User Address、Sub Code、Sub Function、Extension Code、User Level、Door、卡號相關欄位與 checksum。100-byte File Base 後段另含 701Server/Client 寫入時間與管理欄位。</p>
-      <p><strong>使用者位址（User Address）</strong>是控制器內的人員索引值；若要顯示姓名、部門等資料，仍需另外載入 701Client / 701Server 的人員資料。<strong>事件碼</strong>則可直接依 SOYAL 官方 Function Code 表轉成中文事件名稱，不需要資料庫。</p>
-      <p class="note">未公開或尚未完全確認的 Offset 會保留原始 HEX，不會硬猜欄位名稱。</p>
+      <p><strong>門號設定</strong>以 Node + 門號對應門名稱；<strong>使用者設定</strong>以 User Address 對應使用者名稱。兩者皆存於 VCF Supabase，修改後所有裝置共用。</p>
+      <p class="note">目前設定 API 依你的要求開放所有人修改；未公開或尚未完全確認的 Offset 仍保留原始 HEX。</p>
     </section>
   </main>
 
@@ -72,6 +78,43 @@
     <div class="dialog-head"><h2>Record 詳細資料</h2><button id="closeDialog" aria-label="關閉">×</button></div>
     <div id="detailSummary" class="detail-summary"></div>
     <div class="hex-grid" id="hexGrid"></div>
+  </dialog>
+
+  <dialog id="doorSettingsDialog" class="settings-dialog">
+    <div class="dialog-head"><h2>門號設定</h2><button class="dialog-close" data-close="doorSettingsDialog" aria-label="關閉">×</button></div>
+    <form id="doorForm" class="settings-form">
+      <input id="doorEditId" type="hidden" />
+      <label>Node<input id="doorNode" type="number" min="0" required /></label>
+      <label>門號<input id="doorNo" type="number" min="0" required /></label>
+      <label class="grow">門名稱<input id="doorName" type="text" maxlength="200" placeholder="例如：大門-3F" required /></label>
+      <button class="primary" type="submit">儲存</button>
+      <button id="doorCancelEdit" type="button" hidden>取消編輯</button>
+    </form>
+    <div class="settings-message" id="doorMessage"></div>
+    <div class="settings-table-wrap">
+      <table class="settings-table">
+        <thead><tr><th>Node</th><th>門號</th><th>門名稱</th><th>操作</th></tr></thead>
+        <tbody id="doorSettingsBody"></tbody>
+      </table>
+    </div>
+  </dialog>
+
+  <dialog id="userSettingsDialog" class="settings-dialog">
+    <div class="dialog-head"><h2>使用者設定</h2><button class="dialog-close" data-close="userSettingsDialog" aria-label="關閉">×</button></div>
+    <form id="userForm" class="settings-form">
+      <input id="userEditId" type="hidden" />
+      <label>使用者位址<input id="userAddressInput" type="number" min="0" required /></label>
+      <label class="grow">使用者名稱<input id="userName" type="text" maxlength="200" placeholder="例如：張均穗" required /></label>
+      <button class="primary" type="submit">儲存</button>
+      <button id="userCancelEdit" type="button" hidden>取消編輯</button>
+    </form>
+    <div class="settings-message" id="userMessage"></div>
+    <div class="settings-table-wrap">
+      <table class="settings-table">
+        <thead><tr><th>使用者位址</th><th>使用者名稱</th><th>操作</th></tr></thead>
+        <tbody id="userSettingsBody"></tbody>
+      </table>
+    </div>
   </dialog>
 
   <script type="module" src="app.js"></script>
