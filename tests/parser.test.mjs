@@ -3,7 +3,7 @@ import {parseBuffer, parseRecord, RECORD_SIZE} from '../parser.js';
 
 const record = new Uint8Array(RECORD_SIZE);
 record[0] = 0x21;
-record[1] = 0x27;
+record[1] = 0x27; // raw 0x27 = decimal 39 => SOYAL M39
 record[2] = 2;
 record[3] = 13;
 record[4] = 39;
@@ -31,8 +31,20 @@ assert.equal(parsed.eventTime, '2026-09-01 08:39:13');
 assert.equal(parsed.node, 2);
 assert.equal(parsed.door, 2);
 assert.equal(parsed.userAddress, 9);
-assert.equal(parsed.functionHex, 'M27');
+assert.equal(parsed.functionCode, 39);
+assert.equal(parsed.functionLabel, 'M39');
+assert.equal(parsed.functionHex, 'M39');
+assert.equal(parsed.functionName, '指紋／指靜脈通行');
+assert.equal(parsed.functionNameEn, 'Access by fingerprint or finger vein');
 assert.equal(parsed.recordedTime, '2026-09-02 21:31:54');
+
+const invalidCard = new Uint8Array(RECORD_SIZE);
+invalidCard[0] = 0x21;
+invalidCard[1] = 3;
+invalidCard[7] = 1;
+invalidCard[8] = 1;
+assert.equal(parseRecord(invalidCard).functionLabel, 'M03');
+assert.equal(parseRecord(invalidCard).functionName, '無效卡');
 
 const result = parseBuffer(record, 'sample.msg');
 assert.equal(result.totalBytes, 100);
