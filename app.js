@@ -20,6 +20,7 @@ fileInput.addEventListener('change',e=>loadFiles([...e.target.files]));
 dropZone.addEventListener('drop',e=>loadFiles([...e.dataTransfer.files]));
 searchBox.addEventListener('input',render);doorFilter.addEventListener('change',render);addressFilter.addEventListener('change',render);codeFilter.addEventListener('change',render);
 $('#closeDialog').addEventListener('click',()=>dialog.close());
+$('#clearBtn').addEventListener('click',clearImportedData);
 $('#exportBtn').addEventListener('click',exportExcel);
 document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>changeSort(th.dataset.sort)));
 
@@ -59,6 +60,20 @@ async function loadFiles(files){
   }
   refreshFilters();render();toolbar.hidden=false;resultSection.hidden=false;emptyState.hidden=true;
   $('#fileStat').textContent=`檔案 ${filesLoaded} 個`;$('#recordStat').textContent=`紀錄 ${allRecords.length} 筆`;$('#duplicateStat').textContent=`重複略過 ${duplicateCount} 筆`;$('#errorStat').textContent=`格式警告 ${allErrors.length} 個`;fileInput.value='';
+}
+
+function clearImportedData(){
+  if(!allRecords.length&&!filesLoaded)return;
+  if(!confirm('確定要清空目前已匯入的所有資料嗎？'))return;
+  allRecords=[];allErrors=[];filesLoaded=0;loadSequence=0;duplicateCount=0;recordKeys.clear();
+  sortKey='eventTime';sortDir='asc';searchBox.value='';
+  doorFilter.innerHTML='<option value="">全部門號</option>';
+  addressFilter.innerHTML='<option value="">全部使用者代碼</option>';
+  codeFilter.innerHTML='<option value="">全部事件碼</option>';
+  body.innerHTML='';fileInput.value='';
+  $('#fileStat').textContent='';$('#recordStat').textContent='';$('#duplicateStat').textContent='';$('#errorStat').textContent='';
+  toolbar.hidden=true;resultSection.hidden=true;emptyState.hidden=false;
+  if(dialog.open)dialog.close();
 }
 
 function refreshFilters(){
