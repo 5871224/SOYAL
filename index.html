@@ -19,8 +19,8 @@
     <section class="card uploader" id="dropZone">
       <input id="fileInput" type="file" accept=".msg,application/octet-stream" multiple hidden />
       <button id="pickBtn" class="primary">選擇 .msg 檔</button>
-      <strong>或拖曳檔案到這裡</strong>
-      <span>目前支援 SOYAL File Base：每筆固定 100 bytes</span>
+      <strong>或一次拖曳多個檔案到這裡</strong>
+      <span>可同時解析多個 SOYAL .msg；File Base 每筆固定 100 bytes，結果會合併顯示</span>
     </section>
 
     <section class="card toolbar" id="toolbar" hidden>
@@ -32,6 +32,7 @@
       <div class="filters">
         <input id="searchBox" type="search" placeholder="搜尋時間、Node、使用者位址、事件碼或事件名稱…" />
         <select id="nodeFilter"><option value="">全部 Node</option></select>
+        <select id="addressFilter"><option value="">全部使用者位址</option></select>
         <select id="codeFilter"><option value="">全部事件碼</option></select>
         <button id="exportBtn">匯出 CSV</button>
       </div>
@@ -42,7 +43,16 @@
         <table>
           <thead>
             <tr>
-              <th>#</th><th>事件時間</th><th>Node</th><th>門號</th><th>使用者位址</th><th>事件碼</th><th>事件中文名稱</th><th>接收時間</th><th>檔案</th><th></th>
+              <th class="sortable" data-sort="loadOrder"># <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="eventTime">事件時間 <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="node">Node <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="door">門號 <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="userAddress">使用者位址 <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="functionCode">事件碼 <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="functionName">事件中文名稱 <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="recordedTime">接收時間 <span class="sort-mark"></span></th>
+              <th class="sortable" data-sort="fileName">檔案 <span class="sort-mark"></span></th>
+              <th>詳細</th>
             </tr>
           </thead>
           <tbody id="resultBody"></tbody>
