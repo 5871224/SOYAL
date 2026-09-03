@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SOYAL MSG Viewer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div>
+        <h1>SOYAL MSG Viewer</h1>
+        <p>在瀏覽器本機解析 701Server / 701Client 的每日 <code>.msg</code> 事件檔；檔案不會上傳到伺服器。</p>
+      </div>
+      <a class="github" href="https://github.com/5871224/SOYAL" target="_blank" rel="noreferrer">GitHub</a>
+    </header>
+
+    <section class="card uploader" id="dropZone">
+      <input id="fileInput" type="file" accept=".msg,application/octet-stream" multiple hidden />
+      <button id="pickBtn" class="primary">選擇 .msg 檔</button>
+      <strong>或拖曳檔案到這裡</strong>
+      <span>目前支援 SOYAL File Base：每筆固定 100 bytes</span>
+    </section>
+
+    <section class="card toolbar" id="toolbar" hidden>
+      <div class="stats">
+        <span id="fileStat"></span>
+        <span id="recordStat"></span>
+        <span id="errorStat"></span>
+      </div>
+      <div class="filters">
+        <input id="searchBox" type="search" placeholder="搜尋時間、Node、User Address、事件碼…" />
+        <select id="nodeFilter"><option value="">全部 Node</option></select>
+        <select id="codeFilter"><option value="">全部事件碼</option></select>
+        <button id="exportBtn">匯出 CSV</button>
+      </div>
+    </section>
+
+    <section class="card table-card" id="resultSection" hidden>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>事件時間</th><th>Node</th><th>門號</th><th>User Address</th><th>事件碼</th><th>事件</th><th>接收時間</th><th>檔案</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="resultBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="emptyState">
+      <h2>已知解析欄位</h2>
+      <p>事件主封包可解析 Length、Function Code、Source Node、事件時間、Message Source、User Address、Sub Code、Sub Function、Extension Code、User Level、Door、卡號相關欄位與 checksum。100-byte File Base 後段另含 701Server/Client 寫入時間與管理欄位。</p>
+      <p class="note">未公開或尚未完全確認的 Offset 會保留原始 HEX，不會硬猜欄位名稱。</p>
+    </section>
+  </main>
+
+  <dialog id="detailDialog">
+    <div class="dialog-head"><h2>Record 詳細資料</h2><button id="closeDialog" aria-label="關閉">×</button></div>
+    <div id="detailSummary" class="detail-summary"></div>
+    <div class="hex-grid" id="hexGrid"></div>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
