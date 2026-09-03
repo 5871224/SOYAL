@@ -4,7 +4,7 @@ import {exportEventExcel} from './event-excel.js';
 const SETTINGS_API='https://jblrnncqnrqtzwayxtnw.supabase.co/functions/v1/soyal-settings';
 const $=s=>document.querySelector(s);
 const fileInput=$('#fileInput'),pickBtn=$('#pickBtn'),dropZone=$('#dropZone'),body=$('#resultBody');
-const toolbar=$('#toolbar'),resultSection=$('#resultSection'),emptyState=$('#emptyState');
+const toolbar=$('#toolbar'),resultSection=$('#resultSection');
 const searchBox=$('#searchBox'),doorFilter=$('#doorFilter'),addressFilter=$('#addressFilter'),codeFilter=$('#codeFilter');
 const dialog=$('#detailDialog'),hexGrid=$('#hexGrid'),detailSummary=$('#detailSummary');
 const doorSettingsDialog=$('#doorSettingsDialog'),userSettingsDialog=$('#userSettingsDialog');
@@ -58,7 +58,7 @@ async function loadFiles(files){
     const parsed=parseBuffer(await file.arrayBuffer(),file.name);allErrors.push(...parsed.errors);filesLoaded++;
     for(const r of parsed.records){const key=rawRecordKey(r);if(recordKeys.has(key)){duplicateCount++;continue;}recordKeys.add(key);r.loadOrder=++loadSequence;allRecords.push(r);}
   }
-  refreshFilters();render();toolbar.hidden=false;resultSection.hidden=false;emptyState.hidden=true;
+  refreshFilters();render();toolbar.hidden=false;resultSection.hidden=false;
   $('#fileStat').textContent=`檔案 ${filesLoaded} 個`;$('#recordStat').textContent=`紀錄 ${allRecords.length} 筆`;$('#duplicateStat').textContent=`重複略過 ${duplicateCount} 筆`;$('#errorStat').textContent=`格式警告 ${allErrors.length} 個`;fileInput.value='';
 }
 
@@ -68,11 +68,11 @@ function clearImportedData(){
   allRecords=[];allErrors=[];filesLoaded=0;loadSequence=0;duplicateCount=0;recordKeys.clear();
   sortKey='eventTime';sortDir='asc';searchBox.value='';
   doorFilter.innerHTML='<option value="">全部門號</option>';
-  addressFilter.innerHTML='<option value="">全部使用者代碼</option>';
-  codeFilter.innerHTML='<option value="">全部事件碼</option>';
+  addressFilter.innerHTML='<option value="">全部使用者</option>';
+  codeFilter.innerHTML='<option value="">全部事件</option>';
   body.innerHTML='';fileInput.value='';
   $('#fileStat').textContent='';$('#recordStat').textContent='';$('#duplicateStat').textContent='';$('#errorStat').textContent='';
-  toolbar.hidden=true;resultSection.hidden=true;emptyState.hidden=false;
+  toolbar.hidden=true;resultSection.hidden=true;
   if(dialog.open)dialog.close();
 }
 
@@ -86,10 +86,10 @@ function refreshFilters(){
   if(doors.map(String).includes(selectedDoor))doorFilter.value=selectedDoor;
 
   const addresses=[...new Set(allRecords.map(r=>r.userAddress))].sort((a,b)=>a-b);
-  addressFilter.innerHTML='<option value="">全部使用者代碼</option>'+addresses.map(a=>{const name=userMap.get(String(a));return `<option value="${a}">${formatUserCode(a)}${name?`｜${esc(name)}`:''}</option>`;}).join('');
+  addressFilter.innerHTML='<option value="">全部使用者</option>'+addresses.map(a=>{const name=userMap.get(String(a));return `<option value="${a}">${formatUserCode(a)}${name?`｜${esc(name)}`:''}</option>`;}).join('');
   if(addresses.map(String).includes(selectedAddress))addressFilter.value=selectedAddress;
   const codes=[...new Map(allRecords.map(r=>[r.functionLabel,`${r.functionLabel}｜${r.functionName}`])).entries()].sort((a,b)=>Number(a[0].slice(1))-Number(b[0].slice(1)));
-  codeFilter.innerHTML='<option value="">全部事件碼</option>'+codes.map(([value,label])=>`<option value="${esc(value)}">${esc(label)}</option>`).join('');if(codes.some(([value])=>value===selectedCode))codeFilter.value=selectedCode;
+  codeFilter.innerHTML='<option value="">全部事件</option>'+codes.map(([value,label])=>`<option value="${esc(value)}">${esc(label)}</option>`).join('');if(codes.some(([value])=>value===selectedCode))codeFilter.value=selectedCode;
 }
 
 function changeSort(key){if(sortKey===key)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=key;sortDir='asc';}render();}
