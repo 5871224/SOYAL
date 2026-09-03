@@ -25,8 +25,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Test parser
-        run: npm test
+      - name: Test parser and JavaScript
+        run: |
+          npm test
+          node --check app.js
+          node --check parser.js
+          node --check excel.js
+          node --check settings-excel-ui.js
       - uses: actions/configure-pages@v5
         with:
           enablement: true
