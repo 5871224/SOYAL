@@ -68,8 +68,11 @@ async function upsertUserRows(rows) {
   return { created, updated, skipped };
 }
 
-async function refreshMainSettings() {
-  if (typeof window.refreshSoyalSettings === 'function') await window.refreshSoyalSettings();
+function refreshMainSettings(type) {
+  const dialog = $(type === 'doors' ? '#doorSettingsDialog' : '#userSettingsDialog');
+  const button = $(type === 'doors' ? '#doorSettingsBtn' : '#userSettingsBtn');
+  if (dialog?.open) dialog.close();
+  button?.click();
 }
 
 $('#doorExportExcel')?.addEventListener('click', async () => {
@@ -116,7 +119,7 @@ $('#doorExcelInput')?.addEventListener('change', async event => {
     const rows = await importDoorExcel(file);
     setMessage('#doorMessage', `正在匯入 ${rows.length} 筆…`);
     const result = await upsertDoorRows(rows);
-    await refreshMainSettings();
+    refreshMainSettings('doors');
     setMessage('#doorMessage', `匯入完成：新增 ${result.created}、更新 ${result.updated}、未變更 ${result.skipped}`);
   } catch (error) {
     setMessage('#doorMessage', error.message, true);
@@ -137,7 +140,7 @@ $('#userExcelInput')?.addEventListener('change', async event => {
     const rows = await importUserExcel(file);
     setMessage('#userMessage', `正在匯入 ${rows.length} 筆…`);
     const result = await upsertUserRows(rows);
-    await refreshMainSettings();
+    refreshMainSettings('users');
     setMessage('#userMessage', `匯入完成：新增 ${result.created}、更新 ${result.updated}、未變更 ${result.skipped}`);
   } catch (error) {
     setMessage('#userMessage', error.message, true);
