@@ -90,6 +90,12 @@
       <button class="primary" type="submit">儲存</button>
       <button id="doorCancelEdit" type="button" hidden>取消編輯</button>
     </form>
+    <div class="settings-excel-actions">
+      <input id="doorExcelInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
+      <button id="doorExportExcel" type="button">匯出 Excel</button>
+      <button id="doorImportExcel" type="button">匯入 Excel</button>
+      <span class="note">匯出的 <code>.xlsx</code> 可直接修改後再匯入；匯入只新增／更新，不會刪除未列出的既有資料。</span>
+    </div>
     <div class="settings-message" id="doorMessage"></div>
     <div class="settings-table-wrap">
       <table class="settings-table">
@@ -108,6 +114,12 @@
       <button class="primary" type="submit">儲存</button>
       <button id="userCancelEdit" type="button" hidden>取消編輯</button>
     </form>
+    <div class="settings-excel-actions">
+      <input id="userExcelInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
+      <button id="userExportExcel" type="button">匯出 Excel</button>
+      <button id="userImportExcel" type="button">匯入 Excel</button>
+      <span class="note">匯出的 <code>.xlsx</code> 可直接修改後再匯入；匯入只新增／更新，不會刪除未列出的既有資料。</span>
+    </div>
     <div class="settings-message" id="userMessage"></div>
     <div class="settings-table-wrap">
       <table class="settings-table">
@@ -118,5 +130,6 @@
   </dialog>
 
   <script type="module" src="app.js"></script>
+  <script type="module" src="settings-excel-ui.js"></script>
 </body>
 </html>
