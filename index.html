@@ -35,8 +35,8 @@
         <div class="filters">
           <input id="searchBox" type="search" placeholder="搜尋時間、門號、門名稱、使用者名稱、事件碼…" />
           <select id="doorFilter"><option value="">全部門號</option></select>
-          <select id="addressFilter"><option value="">全部使用者代碼</option></select>
-          <select id="codeFilter"><option value="">全部事件碼</option></select>
+          <select id="addressFilter"><option value="">全部使用者</option></select>
+          <select id="codeFilter"><option value="">全部事件</option></select>
         </div>
         <button id="exportBtn" class="export-button">匯出 Excel</button>
       </div>
@@ -62,13 +62,6 @@
           <tbody id="resultBody"></tbody>
         </table>
       </div>
-    </section>
-
-    <section class="card" id="emptyState">
-      <h2>已知解析欄位</h2>
-      <p>事件主封包可解析 Length、Function Code、Source Node、事件時間、Message Source、User Address、Sub Code、Sub Function、Extension Code、User Level、Door、卡號相關欄位與 checksum。100-byte File Base 後段另含 701Server/Client 寫入時間與管理欄位。</p>
-      <p><strong>門號設定</strong>以門號對應門名稱；<strong>使用者設定</strong>以使用者代碼對應使用者名稱。兩者皆存於 VCF Supabase，修改後所有裝置共用。</p>
-      <p class="note">目前設定 API 依你的要求開放所有人修改；未公開或尚未完全確認的 Offset 仍保留原始 HEX。</p>
     </section>
   </main>
 
