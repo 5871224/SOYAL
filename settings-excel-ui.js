@@ -34,10 +34,10 @@ async function runLimited(items, limit, worker) {
 
 async function upsertDoorRows(rows) {
   const current = (await request('doors')).data || [];
-  const map = new Map(current.map(row => [`${row.node_id}:${row.door_no}`, row]));
+  const map = new Map(current.map(row => [String(row.door_no), row]));
   let created = 0, updated = 0, skipped = 0;
   await runLimited(rows, 6, async row => {
-    const existing = map.get(`${row.node_id}:${row.door_no}`);
+    const existing = map.get(String(row.door_no));
     if (existing) {
       if (String(existing.door_name) === row.door_name) { skipped++; return; }
       await request('doors', 'PUT', { id: existing.id, data: row });
