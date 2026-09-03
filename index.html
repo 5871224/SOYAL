@@ -66,7 +66,7 @@
     <section class="card" id="emptyState">
       <h2>已知解析欄位</h2>
       <p>事件主封包可解析 Length、Function Code、Source Node、事件時間、Message Source、User Address、Sub Code、Sub Function、Extension Code、User Level、Door、卡號相關欄位與 checksum。100-byte File Base 後段另含 701Server/Client 寫入時間與管理欄位。</p>
-      <p><strong>門號設定</strong>以 Node + 門號對應門名稱；<strong>使用者設定</strong>以 User Address 對應使用者名稱。兩者皆存於 VCF Supabase，修改後所有裝置共用。</p>
+      <p><strong>門號設定</strong>以門號對應門名稱；<strong>使用者設定</strong>以 User Address 對應使用者名稱。兩者皆存於 VCF Supabase，修改後所有裝置共用。</p>
       <p class="note">目前設定 API 依你的要求開放所有人修改；未公開或尚未完全確認的 Offset 仍保留原始 HEX。</p>
     </section>
   </main>
@@ -81,7 +81,6 @@
     <div class="dialog-head"><h2>門號設定</h2><button class="dialog-close" data-close="doorSettingsDialog" aria-label="關閉">×</button></div>
     <form id="doorForm" class="settings-form">
       <input id="doorEditId" type="hidden" />
-      <label>Node<input id="doorNode" type="number" min="0" required /></label>
       <label>門號<input id="doorNo" type="number" min="0" required /></label>
       <label class="grow">門名稱<input id="doorName" type="text" maxlength="200" placeholder="例如：大門-3F" required /></label>
       <div class="form-actions">
@@ -95,12 +94,12 @@
         <button id="doorExportExcel" type="button">匯出 Excel</button>
         <button id="doorImportExcel" type="button">匯入 Excel</button>
       </div>
-      <span class="note">匯出的 .xlsx 可直接修改後再匯入；匯入只新增／更新，不會刪除未列出的既有資料。</span>
+      <span class="note">匯出的 .xlsx 可直接修改後再匯入；格式為「門號、門名稱」。匯入只新增／更新，不會刪除未列出的既有資料。</span>
     </div>
     <div class="settings-message" id="doorMessage"></div>
     <div class="settings-table-wrap">
       <table class="settings-table">
-        <thead><tr><th>Node</th><th>門號</th><th>門名稱</th><th>操作</th></tr></thead>
+        <thead><tr><th>門號</th><th>門名稱</th><th>操作</th></tr></thead>
         <tbody id="doorSettingsBody"></tbody>
       </table>
     </div>
