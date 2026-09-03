@@ -1,12 +1,16 @@
 import {parseBuffer,KNOWN_OFFSETS} from './parser.js';
 
+const SETTINGS_API='https://jblrnncqnrqtzwayxtnw.supabase.co/functions/v1/soyal-settings';
 const $=s=>document.querySelector(s);
 const fileInput=$('#fileInput'), pickBtn=$('#pickBtn'), dropZone=$('#dropZone'), body=$('#resultBody');
 const toolbar=$('#toolbar'), resultSection=$('#resultSection'), emptyState=$('#emptyState');
 const searchBox=$('#searchBox'), nodeFilter=$('#nodeFilter'), addressFilter=$('#addressFilter'), codeFilter=$('#codeFilter');
 const dialog=$('#detailDialog'), hexGrid=$('#hexGrid'), detailSummary=$('#detailSummary');
+const doorSettingsDialog=$('#doorSettingsDialog'), userSettingsDialog=$('#userSettingsDialog');
 let allRecords=[]; let allErrors=[]; let filesLoaded=0; let loadSequence=0;
 let sortKey='eventTime'; let sortDir='asc';
+let doorSettings=[]; let userSettings=[];
+let doorMap=new Map(); let userMap=new Map();
 
 pickBtn.addEventListener('click',()=>fileInput.click());
 fileInput.addEventListener('change',e=>loadFiles([...e.target.files]));
@@ -20,6 +24,43 @@ codeFilter.addEventListener('change',render);
 $('#closeDialog').addEventListener('click',()=>dialog.close());
 $('#exportBtn').addEventListener('click',exportCsv);
 document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>changeSort(th.dataset.sort)));
+
+$('#doorSettingsBtn').addEventListener('click',async()=>{await loadSettings();doorSettingsDialog.showModal();});
+$('#userSettingsBtn').addEventListener('click',async()=>{await loadSettings();userSettingsDialog.showModal();});
+document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>document.getElementById(btn.dataset.close).close()));
+$('#doorForm').addEventListener('submit',saveDoorSetting);
+$('#userForm').addEventListener('submit',saveUserSetting);
+$('#doorCancelEdit').addEventListener('click',resetDoorForm);
+$('#userCancelEdit').addEventListener('click',resetUserForm);
+$('#doorSettingsBody').addEventListener('click',handleDoorTableClick);
+$('#userSettingsBody').addEventListener('click',handleUserTableClick);
+
+loadSettings().catch(err=>console.error('設定資料載入失敗',err));
+
+async function settingsRequest(type,method='GET',payload={}){
+  const url=method==='GET'?`${SETTINGS_API}?type=${encodeURIComponent(type)}`:SETTINGS_API;
+  const options={method,headers:{'Content-Type':'application/json'}};
+  if(method!=='GET')options.body=JSON.stringify({type,...payload});
+  const response=await fetch(url,options);
+  let result={};
+  try{result=await response.json();}catch{}
+  if(!response.ok)throw new Error(result.error||`設定 API 錯誤 (${response.status})`);
+  return result;
+}
+
+async function loadSettings(){
+  const [doors,users]=await Promise.all([settingsRequest('doors'),settingsRequest('users')]);
+  doorSettings=doors.data||[];
+  userSettings=users.data||[];
+  doorMap=new Map(doorSettings.map(d=>[`${d.node_id}:${d.door_no}`,d.door_name]));
+  userMap=new Map(userSettings.map(u=>[String(u.user_address),u.user_name]));
+  renderDoorSettings();
+  renderUserSettings();
+  if(allRecords.length){refreshFilters();render();}
+}
+
+function getDoorName(r){return doorMap.get(`${r.node}:${r.door}`)||'';}
+function getUserName(r){return userMap.get(String(r.userAddress))||'';}
 
 async function loadFiles(files){
   const msgs=files.filter(f=>f.name.toLowerCase().endsWith('.msg'));
@@ -42,7 +83,10 @@ function refreshFilters(){
   if(nodes.map(String).includes(selectedNode))nodeFilter.value=selectedNode;
 
   const addresses=[...new Set(allRecords.map(r=>r.userAddress))].sort((a,b)=>a-b);
-  addressFilter.innerHTML='<option value="">全部使用者位址</option>'+addresses.map(a=>`<option value="${a}">${a}</option>`).join('');
+  addressFilter.innerHTML='<option value="">全部使用者位址</option>'+addresses.map(a=>{
+    const name=userMap.get(String(a));
+    return `<option value="${a}">${a}${name?`｜${esc(name)}`:''}</option>`;
+  }).join('');
   if(addresses.map(String).includes(selectedAddress))addressFilter.value=selectedAddress;
 
   const codes=[...new Map(allRecords.map(r=>[r.functionLabel,`${r.functionLabel}｜${r.functionName}`])).entries()]
@@ -58,6 +102,8 @@ function changeSort(key){
 }
 
 function compareValues(a,b,key){
+  if(key==='doorName')return getDoorName(a).localeCompare(getDoorName(b),'zh-Hant',{numeric:true,sensitivity:'base'});
+  if(key==='userName')return getUserName(a).localeCompare(getUserName(b),'zh-Hant',{numeric:true,sensitivity:'base'});
   const numericKeys=new Set(['loadOrder','node','door','userAddress','functionCode']);
   if(numericKeys.has(key))return Number(a[key]??0)-Number(b[key]??0);
   return String(a[key]??'').localeCompare(String(b[key]??''),'zh-Hant',{numeric:true,sensitivity:'base'});
@@ -78,7 +124,7 @@ function getFiltered(){
     if(nodeFilter.value && String(r.node)!==nodeFilter.value)return false;
     if(addressFilter.value && String(r.userAddress)!==addressFilter.value)return false;
     if(codeFilter.value && r.functionLabel!==codeFilter.value)return false;
-    const hay=[r.eventTime,r.node,r.door,r.userAddress,r.functionLabel,r.functionName,r.functionNameEn,r.recordedTime,r.fileName].join(' ').toLowerCase();
+    const hay=[r.eventTime,r.node,r.door,getDoorName(r),r.userAddress,getUserName(r),r.functionLabel,r.functionName,r.functionNameEn,r.recordedTime,r.fileName].join(' ').toLowerCase();
     return !q||hay.includes(q);
   });
   return filtered.sort((a,b)=>{
@@ -91,13 +137,14 @@ function getFiltered(){
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
 function render(){
   updateSortHeaders();
-  body.innerHTML=getFiltered().map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.eventTime)}</td><td>${r.node}</td><td>${r.door}</td><td>${r.userAddress}</td><td><code>${r.functionLabel}</code></td><td>${esc(r.functionName)}</td><td>${esc(r.recordedTime)}</td><td>${esc(r.fileName)}</td><td><button data-key="${allRecords.indexOf(r)}">HEX</button></td></tr>`).join('');
+  body.innerHTML=getFiltered().map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.eventTime)}</td><td>${r.node}</td><td>${r.door}</td><td>${esc(getDoorName(r))}</td><td>${r.userAddress}</td><td>${esc(getUserName(r))}</td><td><code>${r.functionLabel}</code></td><td>${esc(r.functionName)}</td><td>${esc(r.recordedTime)}</td><td>${esc(r.fileName)}</td><td><button data-key="${allRecords.indexOf(r)}">HEX</button></td></tr>`).join('');
   body.querySelectorAll('button[data-key]').forEach(btn=>btn.addEventListener('click',()=>showDetail(allRecords[Number(btn.dataset.key)])));
 }
 
 function showDetail(r){
   detailSummary.innerHTML=[
-    ['事件時間',r.eventTime],['Node',r.node],['門號',r.door],['使用者位址 (Address)',r.userAddress],
+    ['事件時間',r.eventTime],['Node',r.node],['門號',r.door],['門名稱',getDoorName(r)||'—'],
+    ['使用者位址 (Address)',r.userAddress],['使用者名稱',getUserName(r)||'—'],
     ['事件碼',r.functionLabel],['事件中文名稱',r.functionName],['官方英文定義',r.functionNameEn||'—'],
     ['接收時間',r.recordedTime],['Controller Node',r.controllerNode],['Message Type',r.messageType],['來源檔',r.fileName]
   ].map(([k,v])=>`<div><small>${k}</small><br><strong>${esc(v)}</strong></div>`).join('');
@@ -106,7 +153,78 @@ function showDetail(r){
 }
 
 function exportCsv(){
-  const rows=[['事件時間','Node','門號','使用者位址(Address)','事件碼','事件中文名稱','官方英文定義','接收時間','檔案'],...getFiltered().map(r=>[r.eventTime,r.node,r.door,r.userAddress,r.functionLabel,r.functionName,r.functionNameEn,r.recordedTime,r.fileName])];
+  const rows=[['事件時間','Node','門號','門名稱','使用者位址(Address)','使用者名稱','事件碼','事件中文名稱','官方英文定義','接收時間','檔案'],...getFiltered().map(r=>[r.eventTime,r.node,r.door,getDoorName(r),r.userAddress,getUserName(r),r.functionLabel,r.functionName,r.functionNameEn,r.recordedTime,r.fileName])];
   const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='soyal-msg.csv';a.click();URL.revokeObjectURL(a.href);
+}
+
+function setMessage(id,text,isError=false){
+  const el=$(id);el.textContent=text;el.classList.toggle('error',isError);
+}
+
+function renderDoorSettings(){
+  const tbody=$('#doorSettingsBody');
+  tbody.innerHTML=doorSettings.map(d=>`<tr><td>${d.node_id}</td><td>${d.door_no}</td><td>${esc(d.door_name)}</td><td><button data-action="edit" data-id="${d.id}">編輯</button> <button class="danger" data-action="delete" data-id="${d.id}">刪除</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty-cell">尚無門號設定</td></tr>';
+}
+
+function renderUserSettings(){
+  const tbody=$('#userSettingsBody');
+  tbody.innerHTML=userSettings.map(u=>`<tr><td>${u.user_address}</td><td>${esc(u.user_name)}</td><td><button data-action="edit" data-id="${u.id}">編輯</button> <button class="danger" data-action="delete" data-id="${u.id}">刪除</button></td></tr>`).join('')||'<tr><td colspan="3" class="empty-cell">尚無使用者設定</td></tr>';
+}
+
+async function saveDoorSetting(e){
+  e.preventDefault();
+  const id=Number($('#doorEditId').value)||null;
+  const data={node_id:Number($('#doorNode').value),door_no:Number($('#doorNo').value),door_name:$('#doorName').value.trim()};
+  try{
+    setMessage('#doorMessage','儲存中…');
+    await settingsRequest('doors',id?'PUT':'POST',id?{id,data}:{data});
+    resetDoorForm();await loadSettings();setMessage('#doorMessage','已儲存');
+  }catch(err){setMessage('#doorMessage',err.message,true);}
+}
+
+async function saveUserSetting(e){
+  e.preventDefault();
+  const id=Number($('#userEditId').value)||null;
+  const data={user_address:Number($('#userAddressInput').value),user_name:$('#userName').value.trim()};
+  try{
+    setMessage('#userMessage','儲存中…');
+    await settingsRequest('users',id?'PUT':'POST',id?{id,data}:{data});
+    resetUserForm();await loadSettings();setMessage('#userMessage','已儲存');
+  }catch(err){setMessage('#userMessage',err.message,true);}
+}
+
+function handleDoorTableClick(e){
+  const btn=e.target.closest('button[data-action]');if(!btn)return;
+  const row=doorSettings.find(d=>Number(d.id)===Number(btn.dataset.id));if(!row)return;
+  if(btn.dataset.action==='edit'){
+    $('#doorEditId').value=row.id;$('#doorNode').value=row.node_id;$('#doorNo').value=row.door_no;$('#doorName').value=row.door_name;$('#doorCancelEdit').hidden=false;$('#doorName').focus();return;
+  }
+  if(btn.dataset.action==='delete')deleteDoorSetting(row);
+}
+
+function handleUserTableClick(e){
+  const btn=e.target.closest('button[data-action]');if(!btn)return;
+  const row=userSettings.find(u=>Number(u.id)===Number(btn.dataset.id));if(!row)return;
+  if(btn.dataset.action==='edit'){
+    $('#userEditId').value=row.id;$('#userAddressInput').value=row.user_address;$('#userName').value=row.user_name;$('#userCancelEdit').hidden=false;$('#userName').focus();return;
+  }
+  if(btn.dataset.action==='delete')deleteUserSetting(row);
+}
+
+async function deleteDoorSetting(row){
+  if(!confirm(`確定刪除 Node ${row.node_id} / 門號 ${row.door_no}「${row.door_name}」？`))return;
+  try{await settingsRequest('doors','DELETE',{id:row.id});await loadSettings();setMessage('#doorMessage','已刪除');}catch(err){setMessage('#doorMessage',err.message,true);}
+}
+
+async function deleteUserSetting(row){
+  if(!confirm(`確定刪除使用者位址 ${row.user_address}「${row.user_name}」？`))return;
+  try{await settingsRequest('users','DELETE',{id:row.id});await loadSettings();setMessage('#userMessage','已刪除');}catch(err){setMessage('#userMessage',err.message,true);}
+}
+
+function resetDoorForm(){
+  $('#doorEditId').value='';$('#doorForm').reset();$('#doorCancelEdit').hidden=true;
+}
+function resetUserForm(){
+  $('#userEditId').value='';$('#userForm').reset();$('#userCancelEdit').hidden=true;
 }
