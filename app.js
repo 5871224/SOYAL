@@ -31,34 +31,39 @@ async function loadFiles(files){
 function refreshFilters(){
   const nodes=[...new Set(allRecords.map(r=>r.node))].sort((a,b)=>a-b);
   nodeFilter.innerHTML='<option value="">全部 Node</option>'+nodes.map(n=>`<option>${n}</option>`).join('');
-  const codes=[...new Set(allRecords.map(r=>r.functionHex))].sort();
-  codeFilter.innerHTML='<option value="">全部事件碼</option>'+codes.map(c=>`<option>${c}</option>`).join('');
+  const codes=[...new Map(allRecords.map(r=>[r.functionLabel,`${r.functionLabel}｜${r.functionName}`])).entries()]
+    .sort((a,b)=>Number(a[0].slice(1))-Number(b[0].slice(1)));
+  codeFilter.innerHTML='<option value="">全部事件碼</option>'+codes.map(([value,label])=>`<option value="${esc(value)}">${esc(label)}</option>`).join('');
 }
 
 function getFiltered(){
   const q=searchBox.value.trim().toLowerCase();
   return allRecords.filter(r=>{
     if(nodeFilter.value && String(r.node)!==nodeFilter.value)return false;
-    if(codeFilter.value && r.functionHex!==codeFilter.value)return false;
-    const hay=[r.eventTime,r.node,r.door,r.userAddress,r.functionHex,r.functionName,r.recordedTime,r.fileName].join(' ').toLowerCase();
+    if(codeFilter.value && r.functionLabel!==codeFilter.value)return false;
+    const hay=[r.eventTime,r.node,r.door,r.userAddress,r.functionLabel,r.functionName,r.functionNameEn,r.recordedTime,r.fileName].join(' ').toLowerCase();
     return !q||hay.includes(q);
   });
 }
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
 function render(){
-  body.innerHTML=getFiltered().map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.eventTime)}</td><td>${r.node}</td><td>${r.door}</td><td>${r.userAddress}</td><td><code>${r.functionHex}</code></td><td>${esc(r.functionName)}</td><td>${esc(r.recordedTime)}</td><td>${esc(r.fileName)}</td><td><button data-key="${allRecords.indexOf(r)}">HEX</button></td></tr>`).join('');
+  body.innerHTML=getFiltered().map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.eventTime)}</td><td>${r.node}</td><td>${r.door}</td><td>${r.userAddress}</td><td><code>${r.functionLabel}</code></td><td>${esc(r.functionName)}</td><td>${esc(r.recordedTime)}</td><td>${esc(r.fileName)}</td><td><button data-key="${allRecords.indexOf(r)}">HEX</button></td></tr>`).join('');
   body.querySelectorAll('button[data-key]').forEach(btn=>btn.addEventListener('click',()=>showDetail(allRecords[Number(btn.dataset.key)])));
 }
 
 function showDetail(r){
-  detailSummary.innerHTML=[['事件時間',r.eventTime],['Node',r.node],['門號',r.door],['User Address',r.userAddress],['事件碼',r.functionHex],['事件',r.functionName],['接收時間',r.recordedTime],['Controller Node',r.controllerNode],['Message Type',r.messageType],['來源檔',r.fileName]].map(([k,v])=>`<div><small>${k}</small><br><strong>${esc(v)}</strong></div>`).join('');
+  detailSummary.innerHTML=[
+    ['事件時間',r.eventTime],['Node',r.node],['門號',r.door],['使用者位址 (Address)',r.userAddress],
+    ['事件碼',r.functionLabel],['事件中文名稱',r.functionName],['官方英文定義',r.functionNameEn||'—'],
+    ['接收時間',r.recordedTime],['Controller Node',r.controllerNode],['Message Type',r.messageType],['來源檔',r.fileName]
+  ].map(([k,v])=>`<div><small>${k}</small><br><strong>${esc(v)}</strong></div>`).join('');
   hexGrid.innerHTML=[...r.raw].map((v,i)=>`<div class="hex-byte ${KNOWN_OFFSETS[i]?'known':''}"><small>+${String(i).padStart(2,'0')} ${esc(KNOWN_OFFSETS[i]||'未確認')}</small><strong>${v.toString(16).toUpperCase().padStart(2,'0')}</strong><small>${v}</small></div>`).join('');
   dialog.showModal();
 }
 
 function exportCsv(){
-  const rows=[['EventTime','Node','Door','UserAddress','FunctionCode','FunctionName','RecordedTime','File'],...getFiltered().map(r=>[r.eventTime,r.node,r.door,r.userAddress,r.functionHex,r.functionName,r.recordedTime,r.fileName])];
+  const rows=[['事件時間','Node','門號','使用者位址(Address)','事件碼','事件中文名稱','官方英文定義','接收時間','檔案'],...getFiltered().map(r=>[r.eventTime,r.node,r.door,r.userAddress,r.functionLabel,r.functionName,r.functionNameEn,r.recordedTime,r.fileName])];
   const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='soyal-msg.csv';a.click();URL.revokeObjectURL(a.href);
 }
