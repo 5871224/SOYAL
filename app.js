@@ -41,12 +41,12 @@ async function settingsRequest(type,method='GET',payload={}){
 async function loadSettings(){
   const [doors,users]=await Promise.all([settingsRequest('doors'),settingsRequest('users')]);
   doorSettings=doors.data||[];userSettings=users.data||[];
-  doorMap=new Map(doorSettings.map(d=>[`${d.node_id}:${d.door_no}`,d.door_name]));
+  doorMap=new Map(doorSettings.map(d=>[String(d.door_no),d.door_name]));
   userMap=new Map(userSettings.map(u=>[String(u.user_address),u.user_name]));
   renderDoorSettings();renderUserSettings();if(allRecords.length){refreshFilters();render();}
 }
 
-function getDoorName(r){return doorMap.get(`${r.node}:${r.door}`)||'';}
+function getDoorName(r){return doorMap.get(String(r.door))||'';}
 function getUserName(r){return userMap.get(String(r.userAddress))||'';}
 function formatUserAddress(value){const n=Number(value);return Number.isFinite(n)?String(n).padStart(4,'0'):String(value??'');}
 function rawRecordKey(r){let key='';for(const b of r.raw)key+=b.toString(16).padStart(2,'0');return key;}
@@ -107,14 +107,14 @@ function exportExcel(){
 }
 
 function setMessage(id,text,isError=false){const el=$(id);el.textContent=text;el.classList.toggle('error',isError);}
-function renderDoorSettings(){const tbody=$('#doorSettingsBody');tbody.innerHTML=doorSettings.map(d=>`<tr><td>${d.node_id}</td><td>${d.door_no}</td><td>${esc(d.door_name)}</td><td><button data-action="edit" data-id="${d.id}">編輯</button> <button class="danger" data-action="delete" data-id="${d.id}">刪除</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty-cell">尚無門號設定</td></tr>';}
+function renderDoorSettings(){const tbody=$('#doorSettingsBody');tbody.innerHTML=doorSettings.map(d=>`<tr><td>${d.door_no}</td><td>${esc(d.door_name)}</td><td><button data-action="edit" data-id="${d.id}">編輯</button> <button class="danger" data-action="delete" data-id="${d.id}">刪除</button></td></tr>`).join('')||'<tr><td colspan="3" class="empty-cell">尚無門號設定</td></tr>';}
 function renderUserSettings(){const tbody=$('#userSettingsBody');tbody.innerHTML=userSettings.map(u=>`<tr><td>${formatUserAddress(u.user_address)}</td><td>${esc(u.user_name)}</td><td><button data-action="edit" data-id="${u.id}">編輯</button> <button class="danger" data-action="delete" data-id="${u.id}">刪除</button></td></tr>`).join('')||'<tr><td colspan="3" class="empty-cell">尚無使用者設定</td></tr>';}
 
-async function saveDoorSetting(e){e.preventDefault();const id=Number($('#doorEditId').value)||null;const data={node_id:Number($('#doorNode').value),door_no:Number($('#doorNo').value),door_name:$('#doorName').value.trim()};try{setMessage('#doorMessage','儲存中…');await settingsRequest('doors',id?'PUT':'POST',id?{id,data}:{data});resetDoorForm();await loadSettings();setMessage('#doorMessage','已儲存');}catch(err){setMessage('#doorMessage',err.message,true);}}
+async function saveDoorSetting(e){e.preventDefault();const id=Number($('#doorEditId').value)||null;const data={door_no:Number($('#doorNo').value),door_name:$('#doorName').value.trim()};try{setMessage('#doorMessage','儲存中…');await settingsRequest('doors',id?'PUT':'POST',id?{id,data}:{data});resetDoorForm();await loadSettings();setMessage('#doorMessage','已儲存');}catch(err){setMessage('#doorMessage',err.message,true);}}
 async function saveUserSetting(e){e.preventDefault();const id=Number($('#userEditId').value)||null;const data={user_address:Number($('#userAddressInput').value),user_name:$('#userName').value.trim()};try{setMessage('#userMessage','儲存中…');await settingsRequest('users',id?'PUT':'POST',id?{id,data}:{data});resetUserForm();await loadSettings();setMessage('#userMessage','已儲存');}catch(err){setMessage('#userMessage',err.message,true);}}
-function handleDoorTableClick(e){const btn=e.target.closest('button[data-action]');if(!btn)return;const row=doorSettings.find(d=>Number(d.id)===Number(btn.dataset.id));if(!row)return;if(btn.dataset.action==='edit'){$('#doorEditId').value=row.id;$('#doorNode').value=row.node_id;$('#doorNo').value=row.door_no;$('#doorName').value=row.door_name;$('#doorCancelEdit').hidden=false;$('#doorName').focus();return;}if(btn.dataset.action==='delete')deleteDoorSetting(row);}
+function handleDoorTableClick(e){const btn=e.target.closest('button[data-action]');if(!btn)return;const row=doorSettings.find(d=>Number(d.id)===Number(btn.dataset.id));if(!row)return;if(btn.dataset.action==='edit'){$('#doorEditId').value=row.id;$('#doorNo').value=row.door_no;$('#doorName').value=row.door_name;$('#doorCancelEdit').hidden=false;$('#doorName').focus();return;}if(btn.dataset.action==='delete')deleteDoorSetting(row);}
 function handleUserTableClick(e){const btn=e.target.closest('button[data-action]');if(!btn)return;const row=userSettings.find(u=>Number(u.id)===Number(btn.dataset.id));if(!row)return;if(btn.dataset.action==='edit'){$('#userEditId').value=row.id;$('#userAddressInput').value=row.user_address;$('#userName').value=row.user_name;$('#userCancelEdit').hidden=false;$('#userName').focus();return;}if(btn.dataset.action==='delete')deleteUserSetting(row);}
-async function deleteDoorSetting(row){if(!confirm(`確定刪除 Node ${row.node_id} / 門號 ${row.door_no}「${row.door_name}」？`))return;try{await settingsRequest('doors','DELETE',{id:row.id});await loadSettings();setMessage('#doorMessage','已刪除');}catch(err){setMessage('#doorMessage',err.message,true);}}
+async function deleteDoorSetting(row){if(!confirm(`確定刪除門號 ${row.door_no}「${row.door_name}」？`))return;try{await settingsRequest('doors','DELETE',{id:row.id});await loadSettings();setMessage('#doorMessage','已刪除');}catch(err){setMessage('#doorMessage',err.message,true);}}
 async function deleteUserSetting(row){if(!confirm(`確定刪除使用者位址 ${formatUserAddress(row.user_address)}「${row.user_name}」？`))return;try{await settingsRequest('users','DELETE',{id:row.id});await loadSettings();setMessage('#userMessage','已刪除');}catch(err){setMessage('#userMessage',err.message,true);}}
 function resetDoorForm(){$('#doorEditId').value='';$('#doorForm').reset();$('#doorCancelEdit').hidden=true;}
 function resetUserForm(){$('#userEditId').value='';$('#userForm').reset();$('#userCancelEdit').hidden=true;}
