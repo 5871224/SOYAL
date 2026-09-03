@@ -5,7 +5,7 @@ const SETTINGS_API='https://jblrnncqnrqtzwayxtnw.supabase.co/functions/v1/soyal-
 const $=s=>document.querySelector(s);
 const fileInput=$('#fileInput'),pickBtn=$('#pickBtn'),dropZone=$('#dropZone'),body=$('#resultBody');
 const toolbar=$('#toolbar'),resultSection=$('#resultSection'),emptyState=$('#emptyState');
-const searchBox=$('#searchBox'),nodeFilter=$('#nodeFilter'),addressFilter=$('#addressFilter'),codeFilter=$('#codeFilter');
+const searchBox=$('#searchBox'),doorFilter=$('#doorFilter'),addressFilter=$('#addressFilter'),codeFilter=$('#codeFilter');
 const dialog=$('#detailDialog'),hexGrid=$('#hexGrid'),detailSummary=$('#detailSummary');
 const doorSettingsDialog=$('#doorSettingsDialog'),userSettingsDialog=$('#userSettingsDialog');
 let allRecords=[],allErrors=[],filesLoaded=0,loadSequence=0,duplicateCount=0;
@@ -18,7 +18,7 @@ fileInput.addEventListener('change',e=>loadFiles([...e.target.files]));
 ['dragenter','dragover'].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.add('drag')}));
 ['dragleave','drop'].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.remove('drag')}));
 dropZone.addEventListener('drop',e=>loadFiles([...e.dataTransfer.files]));
-searchBox.addEventListener('input',render);nodeFilter.addEventListener('change',render);addressFilter.addEventListener('change',render);codeFilter.addEventListener('change',render);
+searchBox.addEventListener('input',render);doorFilter.addEventListener('change',render);addressFilter.addEventListener('change',render);codeFilter.addEventListener('change',render);
 $('#closeDialog').addEventListener('click',()=>dialog.close());
 $('#exportBtn').addEventListener('click',exportExcel);
 document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>changeSort(th.dataset.sort)));
@@ -48,7 +48,7 @@ async function loadSettings(){
 
 function getDoorName(r){return doorMap.get(String(r.door))||'';}
 function getUserName(r){return userMap.get(String(r.userAddress))||'';}
-function formatUserAddress(value){const n=Number(value);return Number.isFinite(n)?String(n).padStart(4,'0'):String(value??'');}
+function formatUserCode(value){const n=Number(value);return Number.isFinite(n)?String(n).padStart(4,'0'):String(value??'');}
 function rawRecordKey(r){let key='';for(const b of r.raw)key+=b.toString(16).padStart(2,'0');return key;}
 
 async function loadFiles(files){
@@ -62,11 +62,16 @@ async function loadFiles(files){
 }
 
 function refreshFilters(){
-  const selectedNode=nodeFilter.value,selectedAddress=addressFilter.value,selectedCode=codeFilter.value;
-  const nodes=[...new Set(allRecords.map(r=>r.node))].sort((a,b)=>a-b);
-  nodeFilter.innerHTML='<option value="">全部 Node</option>'+nodes.map(n=>`<option value="${n}">${n}</option>`).join('');if(nodes.map(String).includes(selectedNode))nodeFilter.value=selectedNode;
+  const selectedDoor=doorFilter.value,selectedAddress=addressFilter.value,selectedCode=codeFilter.value;
+  const doors=[...new Set(allRecords.map(r=>r.door))].sort((a,b)=>a-b);
+  doorFilter.innerHTML='<option value="">全部門號</option>'+doors.map(door=>{
+    const name=doorMap.get(String(door))||'未設定';
+    return `<option value="${door}">${door}|${esc(name)}</option>`;
+  }).join('');
+  if(doors.map(String).includes(selectedDoor))doorFilter.value=selectedDoor;
+
   const addresses=[...new Set(allRecords.map(r=>r.userAddress))].sort((a,b)=>a-b);
-  addressFilter.innerHTML='<option value="">全部使用者位址</option>'+addresses.map(a=>{const name=userMap.get(String(a));return `<option value="${a}">${formatUserAddress(a)}${name?`｜${esc(name)}`:''}</option>`;}).join('');
+  addressFilter.innerHTML='<option value="">全部使用者代碼</option>'+addresses.map(a=>{const name=userMap.get(String(a));return `<option value="${a}">${formatUserCode(a)}${name?`｜${esc(name)}`:''}</option>`;}).join('');
   if(addresses.map(String).includes(selectedAddress))addressFilter.value=selectedAddress;
   const codes=[...new Map(allRecords.map(r=>[r.functionLabel,`${r.functionLabel}｜${r.functionName}`])).entries()].sort((a,b)=>Number(a[0].slice(1))-Number(b[0].slice(1)));
   codeFilter.innerHTML='<option value="">全部事件碼</option>'+codes.map(([value,label])=>`<option value="${esc(value)}">${esc(label)}</option>`).join('');if(codes.some(([value])=>value===selectedCode))codeFilter.value=selectedCode;
@@ -83,38 +88,38 @@ function updateSortHeaders(){document.querySelectorAll('th[data-sort]').forEach(
 
 function getFiltered(){
   const q=searchBox.value.trim().toLowerCase();const filtered=allRecords.filter(r=>{
-    if(nodeFilter.value&&String(r.node)!==nodeFilter.value)return false;if(addressFilter.value&&String(r.userAddress)!==addressFilter.value)return false;if(codeFilter.value&&r.functionLabel!==codeFilter.value)return false;
-    const hay=[r.eventTime,r.node,r.door,getDoorName(r),r.userAddress,formatUserAddress(r.userAddress),getUserName(r),r.functionLabel,r.functionName,r.functionNameEn,r.fileName].join(' ').toLowerCase();return !q||hay.includes(q);
+    if(doorFilter.value&&String(r.door)!==doorFilter.value)return false;if(addressFilter.value&&String(r.userAddress)!==addressFilter.value)return false;if(codeFilter.value&&r.functionLabel!==codeFilter.value)return false;
+    const hay=[r.eventTime,r.door,getDoorName(r),r.userAddress,formatUserCode(r.userAddress),getUserName(r),r.functionLabel,r.functionName,r.functionNameEn,r.fileName].join(' ').toLowerCase();return !q||hay.includes(q);
   });
   return filtered.sort((a,b)=>{const primary=compareValues(a,b,sortKey);if(primary!==0)return sortDir==='asc'?primary:-primary;return a.loadOrder-b.loadOrder;});
 }
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
 function render(){
-  updateSortHeaders();body.innerHTML=getFiltered().map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.eventTime)}</td><td>${r.door}</td><td>${esc(getDoorName(r))}</td><td>${formatUserAddress(r.userAddress)}</td><td>${esc(getUserName(r))}</td><td><code>${r.functionLabel}</code></td><td>${esc(r.functionName)}</td><td>${esc(r.fileName)}</td><td><button data-key="${allRecords.indexOf(r)}">HEX</button></td></tr>`).join('');
+  updateSortHeaders();body.innerHTML=getFiltered().map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.eventTime)}</td><td>${r.door}</td><td>${esc(getDoorName(r))}</td><td>${formatUserCode(r.userAddress)}</td><td>${esc(getUserName(r))}</td><td><code>${r.functionLabel}</code></td><td>${esc(r.functionName)}</td><td>${esc(r.fileName)}</td><td><button data-key="${allRecords.indexOf(r)}">HEX</button></td></tr>`).join('');
   body.querySelectorAll('button[data-key]').forEach(btn=>btn.addEventListener('click',()=>showDetail(allRecords[Number(btn.dataset.key)])));
 }
 
 function showDetail(r){
-  detailSummary.innerHTML=[['事件時間',r.eventTime],['Node',r.node],['門號',r.door],['門名稱',getDoorName(r)||'—'],['使用者位址 (Address)',formatUserAddress(r.userAddress)],['使用者名稱',getUserName(r)||'—'],['事件碼',r.functionLabel],['事件名稱',r.functionName],['官方英文定義',r.functionNameEn||'—'],['接收時間',r.recordedTime],['Controller Node',r.controllerNode],['Message Type',r.messageType],['來源檔',r.fileName]].map(([k,v])=>`<div><small>${k}</small><br><strong>${esc(v)}</strong></div>`).join('');
+  detailSummary.innerHTML=[['事件時間',r.eventTime],['Node',r.node],['門號',r.door],['門名稱',getDoorName(r)||'—'],['使用者代碼',formatUserCode(r.userAddress)],['使用者名稱',getUserName(r)||'—'],['事件碼',r.functionLabel],['事件名稱',r.functionName],['官方英文定義',r.functionNameEn||'—'],['接收時間',r.recordedTime],['Controller Node',r.controllerNode],['Message Type',r.messageType],['來源檔',r.fileName]].map(([k,v])=>`<div><small>${k}</small><br><strong>${esc(v)}</strong></div>`).join('');
   hexGrid.innerHTML=[...r.raw].map((v,i)=>`<div class="hex-byte ${KNOWN_OFFSETS[i]?'known':''}"><small>+${String(i).padStart(2,'0')} ${esc(KNOWN_OFFSETS[i]||'未確認')}</small><strong>${v.toString(16).toUpperCase().padStart(2,'0')}</strong><small>${v}</small></div>`).join('');dialog.showModal();
 }
 
 function exportExcel(){
-  const records=getFiltered();const headers=['#','事件時間','門號','門名稱','使用者位址','使用者名稱','事件碼','事件名稱','檔案'];
-  const rows=records.map((r,i)=>[i+1,r.eventTime,r.door,getDoorName(r),formatUserAddress(r.userAddress),getUserName(r),r.functionLabel,r.functionName,r.fileName]);
+  const records=getFiltered();const headers=['#','事件時間','門號','門名稱','使用者代碼','使用者名稱','事件碼','事件名稱','檔案'];
+  const rows=records.map((r,i)=>[i+1,r.eventTime,r.door,getDoorName(r),formatUserCode(r.userAddress),getUserName(r),r.functionLabel,r.functionName,r.fileName]);
   exportEventExcel(headers,rows);
 }
 
 function setMessage(id,text,isError=false){const el=$(id);el.textContent=text;el.classList.toggle('error',isError);}
 function renderDoorSettings(){const tbody=$('#doorSettingsBody');tbody.innerHTML=doorSettings.map(d=>`<tr><td>${d.door_no}</td><td>${esc(d.door_name)}</td><td><button data-action="edit" data-id="${d.id}">編輯</button> <button class="danger" data-action="delete" data-id="${d.id}">刪除</button></td></tr>`).join('')||'<tr><td colspan="3" class="empty-cell">尚無門號設定</td></tr>';}
-function renderUserSettings(){const tbody=$('#userSettingsBody');tbody.innerHTML=userSettings.map(u=>`<tr><td>${formatUserAddress(u.user_address)}</td><td>${esc(u.user_name)}</td><td><button data-action="edit" data-id="${u.id}">編輯</button> <button class="danger" data-action="delete" data-id="${u.id}">刪除</button></td></tr>`).join('')||'<tr><td colspan="3" class="empty-cell">尚無使用者設定</td></tr>';}
+function renderUserSettings(){const tbody=$('#userSettingsBody');tbody.innerHTML=userSettings.map(u=>`<tr><td>${formatUserCode(u.user_address)}</td><td>${esc(u.user_name)}</td><td><button data-action="edit" data-id="${u.id}">編輯</button> <button class="danger" data-action="delete" data-id="${u.id}">刪除</button></td></tr>`).join('')||'<tr><td colspan="3" class="empty-cell">尚無使用者設定</td></tr>';}
 
 async function saveDoorSetting(e){e.preventDefault();const id=Number($('#doorEditId').value)||null;const data={door_no:Number($('#doorNo').value),door_name:$('#doorName').value.trim()};try{setMessage('#doorMessage','儲存中…');await settingsRequest('doors',id?'PUT':'POST',id?{id,data}:{data});resetDoorForm();await loadSettings();setMessage('#doorMessage','已儲存');}catch(err){setMessage('#doorMessage',err.message,true);}}
 async function saveUserSetting(e){e.preventDefault();const id=Number($('#userEditId').value)||null;const data={user_address:Number($('#userAddressInput').value),user_name:$('#userName').value.trim()};try{setMessage('#userMessage','儲存中…');await settingsRequest('users',id?'PUT':'POST',id?{id,data}:{data});resetUserForm();await loadSettings();setMessage('#userMessage','已儲存');}catch(err){setMessage('#userMessage',err.message,true);}}
 function handleDoorTableClick(e){const btn=e.target.closest('button[data-action]');if(!btn)return;const row=doorSettings.find(d=>Number(d.id)===Number(btn.dataset.id));if(!row)return;if(btn.dataset.action==='edit'){$('#doorEditId').value=row.id;$('#doorNo').value=row.door_no;$('#doorName').value=row.door_name;$('#doorCancelEdit').hidden=false;$('#doorName').focus();return;}if(btn.dataset.action==='delete')deleteDoorSetting(row);}
 function handleUserTableClick(e){const btn=e.target.closest('button[data-action]');if(!btn)return;const row=userSettings.find(u=>Number(u.id)===Number(btn.dataset.id));if(!row)return;if(btn.dataset.action==='edit'){$('#userEditId').value=row.id;$('#userAddressInput').value=row.user_address;$('#userName').value=row.user_name;$('#userCancelEdit').hidden=false;$('#userName').focus();return;}if(btn.dataset.action==='delete')deleteUserSetting(row);}
 async function deleteDoorSetting(row){if(!confirm(`確定刪除門號 ${row.door_no}「${row.door_name}」？`))return;try{await settingsRequest('doors','DELETE',{id:row.id});await loadSettings();setMessage('#doorMessage','已刪除');}catch(err){setMessage('#doorMessage',err.message,true);}}
-async function deleteUserSetting(row){if(!confirm(`確定刪除使用者位址 ${formatUserAddress(row.user_address)}「${row.user_name}」？`))return;try{await settingsRequest('users','DELETE',{id:row.id});await loadSettings();setMessage('#userMessage','已刪除');}catch(err){setMessage('#userMessage',err.message,true);}}
+async function deleteUserSetting(row){if(!confirm(`確定刪除使用者代碼 ${formatUserCode(row.user_address)}「${row.user_name}」？`))return;try{await settingsRequest('users','DELETE',{id:row.id});await loadSettings();setMessage('#userMessage','已刪除');}catch(err){setMessage('#userMessage',err.message,true);}}
 function resetDoorForm(){$('#doorEditId').value='';$('#doorForm').reset();$('#doorCancelEdit').hidden=true;}
 function resetUserForm(){$('#userEditId').value='';$('#userForm').reset();$('#userCancelEdit').hidden=true;}
