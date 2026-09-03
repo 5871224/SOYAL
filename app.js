@@ -94,7 +94,7 @@ function refreshFilters(){
   const doors=[...new Set(allRecords.map(r=>r.door))].sort((a,b)=>a-b);
   doorFilter.innerHTML='<option value="">全部門號</option>'+doors.map(door=>{
     const name=doorMap.get(String(door))||'未設定';
-    return `<option value="${door}">${door}|${esc(name)}</option>`;
+    return `<option value="${door}">${door} | ${esc(name)}</option>`;
   }).join('');
   if(doors.map(String).includes(selectedDoor))doorFilter.value=selectedDoor;
 
